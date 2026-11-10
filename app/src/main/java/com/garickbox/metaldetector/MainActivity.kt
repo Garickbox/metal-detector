@@ -86,6 +86,8 @@ fun Screen() {
     val ctx: Context = LocalContext.current
     val reading by MetalDetectorService.reading.collectAsStateWithLifecycle()
     val isRunning by MetalDetectorService.isRunning.collectAsStateWithLifecycle()
+    val peak by MetalDetectorService.peak.collectAsStateWithLifecycle()
+    val findCount by MetalDetectorService.findCount.collectAsStateWithLifecycle()
 
     val history = remember { mutableStateListOf<Float>() }
     LaunchedEffect(reading) {
@@ -111,15 +113,38 @@ fun Screen() {
             fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
         Spacer(Modifier.height(16.dp))
 
-        Text("|B|", color = Color.Gray, fontSize = 12.sp)
-        Text("${reading?.smoothed?.toInt() ?: 0} µT", color = color,
-            fontSize = 64.sp, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("${reading?.direction ?: "·"}", color = color, fontSize = 48.sp,
+                fontWeight = FontWeight.Bold)
+            Spacer(Modifier.fillMaxWidth(0.05f))
+            Column {
+                Text("|B|", color = Color.Gray, fontSize = 10.sp)
+                Text("${reading?.smoothed?.toInt() ?: 0} µT", color = color,
+                    fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
         Text("Δ ${"%.1f".format(delta)} µT", color = color, fontSize = 28.sp,
             fontWeight = FontWeight.SemiBold)
         Text("baseline ${reading?.baseline?.toInt() ?: 0} µT",
-            color = Color.Gray, fontSize = 12.sp)
+            color = Color.Gray, fontSize = 11.sp)
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(12.dp))
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("PEAK", color = Color.Gray, fontSize = 10.sp)
+                Text("${peak.toInt()} µT", color = Color(0xFFFFAA00),
+                    fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("FINDS", color = Color.Gray, fontSize = 10.sp)
+                Text("$findCount", color = Color(0xFF4CAF50),
+                    fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
 
         Box(
             Modifier.fillMaxWidth().height(20.dp)
@@ -134,8 +159,8 @@ fun Screen() {
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("0", color = Color.Gray, fontSize = 10.sp)
-            Text("25 µT", color = Color.Gray, fontSize = 10.sp)
-            Text("50+ µT", color = Color.Gray, fontSize = 10.sp)
+            Text("25", color = Color.Gray, fontSize = 10.sp)
+            Text("50+", color = Color.Gray, fontSize = 10.sp)
         }
 
         Spacer(Modifier.height(24.dp))
@@ -177,8 +202,8 @@ fun Screen() {
 
         Spacer(Modifier.height(16.dp))
         Text(
-            "Detects: Fe, Ni, Co, steel, magnets\n" +
-            "Does NOT detect: Al, Cu, Au, brass\n" +
+            "Fe Ni Co steel magnets ✓\nAl Cu Au brass ✗\n" +
+            "Rythm: 1=warm 2=hot 3=alarm+sound\n" +
             "Tip: перезапусти вдали от металла",
             color = Color(0xFF888888), fontSize = 11.sp, textAlign = TextAlign.Center
         )
