@@ -147,13 +147,24 @@ class MetalDetectorService : Service(), SensorEventListener {
                 getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
             }
             if (!v.hasVibrator()) { Log.e(TAG, "NO VIBRATOR"); return }
-            if (Build.VERSION.SDK_INT >= 26) {
-                v.vibrate(VibrationEffect.createWaveform(pattern, repeat))
+            if (Build.VERSION.SDK_INT >= 33) {
+                // VibrationAttributes USAGE_ALARM — обходит system haptic_feedback=0
+                val attrs = android.os.VibrationAttributes.Builder()
+                    .setUsage(android.os.VibrationAttributes.USAGE_ALARM)
+                    .build()
+                v.vibrate(VibrationEffect.createWaveform(pattern, repeat), attrs)
+            } else if (Build.VERSION.SDK_INT >= 26) {
+                // AudioAttributes USAGE_ALARM для 26-32
+                val audioAttrs = android.media.AudioAttributes.Builder()
+                    .setUsage(android.media.AudioAttributes.USAGE_ALARM)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+                v.vibrate(VibrationEffect.createWaveform(pattern, repeat), audioAttrs)
             } else {
                 @Suppress("DEPRECATION") v.vibrate(pattern, repeat)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "vibrate fail: ${e.message}")
+            Log.e("MetalDetector", "vibrate fail: ${e.message}")
         }
     }
 
