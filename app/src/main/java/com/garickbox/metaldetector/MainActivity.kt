@@ -1,6 +1,7 @@
 package com.garickbox.metaldetector
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -9,30 +10,48 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlin.math.abs
 import kotlin.math.min
 
 class MainActivity : ComponentActivity() {
 
     private val notifPerm = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { startService() }
+    ) { MetalDetectorService.start(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,11 +71,9 @@ class MainActivity : ComponentActivity() {
                 != PackageManager.PERMISSION_GRANTED) {
             notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
-            startService()
+            MetalDetectorService.start(this)
         }
     }
-
-    private fun startService() = MetalDetectorService.start(this)
 
     override fun onDestroy() {
         super.onDestroy()
@@ -66,10 +83,10 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Screen() {
+    val ctx: Context = LocalContext.current
     val reading by MetalDetectorService.reading.collectAsStateWithLifecycle()
     val isRunning by MetalDetectorService.isRunning.collectAsStateWithLifecycle()
 
-    // История последних 200 значений для графика
     val history = remember { mutableStateListOf<Float>() }
     LaunchedEffect(reading) {
         reading?.let {
@@ -104,14 +121,13 @@ fun Screen() {
 
         Spacer(Modifier.height(24.dp))
 
-        // Progress bar
         Box(
             Modifier.fillMaxWidth().height(20.dp)
-                .background(Color(0xFF222222), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                .background(Color(0xFF222222), RoundedCornerShape(10.dp))
         ) {
             Box(
                 Modifier.fillMaxWidth(min(1f, delta / 50f)).fillMaxHeight()
-                    .background(color, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                    .background(color, RoundedCornerShape(10.dp))
             )
         }
 
@@ -124,53 +140,47 @@ fun Screen() {
 
         Spacer(Modifier.height(24.dp))
 
-        // Waveform chart
-        Text("SIGNAL (последние 200 сэмплов)", color = Color.Gray, fontSize = 10.sp)
+        Text("SIGNAL (последние 200)", color = Color.Gray, fontSize = 10.sp)
         Canvas(Modifier.fillMaxWidth().height(120.dp)) {
             val w = size.width
             val h = size.height
-            // сетка
             for (i in 1..4) {
                 val y = h * i / 5
                 drawLine(Color(0xFF333333), Offset(0f, y), Offset(w, y), strokeWidth = 1f)
             }
-            // линия
             if (history.size > 1) {
                 val maxVal = maxOf(50f, history.maxOrNull() ?: 50f)
                 var prev: Offset? = null
                 history.forEachIndexed { i, v ->
                     val x = w * i / 199f
                     val y = h - (v / maxVal) * h
-                    val p = Offset(x, y)
-                    prev?.let { drawLine(color, it, p, strokeWidth = 3f) }
-                    prev = p
+                    val pt = Offset(x, y)
+                    prev?.let { drawLine(color, it, pt, strokeWidth = 3f) }
+                    prev = pt
                 }
             }
         }
 
         Spacer(Modifier.height(24.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(
-                onClick = { if (isRunning) MetalDetectorService.stop(androidx.compose.ui.platform.LocalContext.current) else MetalDetectorService.start(androidx.compose.ui.platform.LocalContext.current) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isRunning) Color(0xFFD32F2F) else Color(0xFF388E3C)
-                )
-            ) {
-                Text(if (isRunning) "STOP" else "START")
-            }
+        Button(
+            onClick = {
+                if (isRunning) MetalDetectorService.stop(ctx)
+                else MetalDetectorService.start(ctx)
+            },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isRunning) Color(0xFFD32F2F) else Color(0xFF388E3C)
+            )
+        ) {
+            Text(if (isRunning) "STOP" else "START")
         }
 
         Spacer(Modifier.height(16.dp))
         Text(
             "Detects: Fe, Ni, Co, steel, magnets\n" +
             "Does NOT detect: Al, Cu, Au, brass\n" +
-            "Tip: отойди от металла и перезапусти для калибровки",
+            "Tip: перезапусти вдали от металла",
             color = Color(0xFF888888), fontSize = 11.sp, textAlign = TextAlign.Center
         )
     }
 }
-
-@Composable
-private fun androidx.compose.ui.platform.LocalContext.current: android.content.Context = 
-    androidx.compose.ui.platform.LocalContext.current
