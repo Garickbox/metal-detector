@@ -31,6 +31,7 @@ class MetalDetectorService : Service(), SensorEventListener {
         val isRunning: MutableStateFlow<Boolean> = MutableStateFlow(false)
         val peak: MutableStateFlow<Float> = MutableStateFlow(0f)
         val findCount: MutableStateFlow<Int> = MutableStateFlow(0)
+        val soundEnabled: MutableStateFlow<Boolean> = MutableStateFlow(true)
 
         fun start(ctx: Context) {
             val i = Intent(ctx, MetalDetectorService::class.java)
@@ -118,8 +119,8 @@ class MetalDetectorService : Service(), SensorEventListener {
             Log.d(TAG, "ALARM d=${r.delta}")
         }
 
-        // звук отдельно, раз в 700ms
-        if (r.delta > pipeline.thresholdAlarm && now - lastSound > 700) {
+        // звук отдельно, раз в 700ms (если включён)
+        if (soundEnabled.value && r.delta > pipeline.thresholdAlarm && now - lastSound > 700) {
             try {
                 val pitch = if (r.delta > pipeline.thresholdAlarm * 2) ToneGenerator.TONE_PROP_BEEP2
                             else ToneGenerator.TONE_PROP_BEEP

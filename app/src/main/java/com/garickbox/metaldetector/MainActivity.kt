@@ -88,6 +88,7 @@ fun Screen() {
     val isRunning by MetalDetectorService.isRunning.collectAsStateWithLifecycle()
     val peak by MetalDetectorService.peak.collectAsStateWithLifecycle()
     val findCount by MetalDetectorService.findCount.collectAsStateWithLifecycle()
+    val soundOn by MetalDetectorService.soundEnabled.collectAsStateWithLifecycle()
 
     val history = remember { mutableStateListOf<Float>() }
     LaunchedEffect(reading) {
@@ -188,16 +189,26 @@ fun Screen() {
 
         Spacer(Modifier.height(24.dp))
 
-        Button(
-            onClick = {
-                if (isRunning) MetalDetectorService.stop(ctx)
-                else MetalDetectorService.start(ctx)
-            },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isRunning) Color(0xFFD32F2F) else Color(0xFF388E3C)
-            )
-        ) {
-            Text(if (isRunning) "STOP" else "START")
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(
+                onClick = {
+                    if (isRunning) MetalDetectorService.stop(ctx)
+                    else MetalDetectorService.start(ctx)
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isRunning) Color(0xFFD32F2F) else Color(0xFF388E3C)
+                )
+            ) {
+                Text(if (isRunning) "STOP" else "START")
+            }
+            Button(
+                onClick = { MetalDetectorService.soundEnabled.value = !soundOn },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (soundOn) Color(0xFF1976D2) else Color(0xFF424242)
+                )
+            ) {
+                Text(if (soundOn) "\uD83D\uDD0A" else "\uD83D\uDD07")
+            }
         }
 
         Spacer(Modifier.height(16.dp))
